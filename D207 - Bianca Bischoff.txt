@@ -1,0 +1,605 @@
+# Importing Libraries
+import pandas as pd
+from pandas import DataFrame
+import numpy as np
+
+# Libraries for Visualization Purposes
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Statistical Libraries
+import pylab
+import sklearn
+import statsmodels.api as sm
+import statistics
+from scipy import stats
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
+
+import seaborn as sns
+from sklearn import preprocessing
+from sklearn.preprocessing import scale
+from sklearn.decomposition import PCA
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.stats import norm, skew
+from scipy import stats
+# sklearn modules for data preprocessing:
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+# sklearn modules for Model Selection:
+from sklearn import svm, tree, linear_model, neighbors
+from sklearn import naive_bayes, ensemble, discriminant_analysis, gaussian_process
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+# sklearn modules for Model Evaluation & Improvement:
+from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import f1_score, precision_score, recall_score, fbeta_score
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import KFold
+from sklearn import feature_selection
+from sklearn import model_selection
+from sklearn import metrics
+from sklearn.metrics import classification_report, precision_recall_curve
+from sklearn.metrics import auc, roc_auc_score, roc_curve
+from sklearn.metrics import make_scorer, recall_score, log_loss
+from sklearn.metrics import average_precision_score
+
+# Since I chose chi-square method, we have to import chisquare from SciPy.stats
+from scipy.stats import chisquare
+from scipy.stats import chi2_contingency
+
+# Loading the Clean Churn Dataset from D206
+churn_df = pd.read_csv('/Users/bia/Desktop/churn_clean.csv')
+df_stats = churn_df.describe()
+# print(df_stats)
+
+
+#Calculating the Churn Rate
+churn_rate=churn_df.Churn.value_counts() / len(churn_df)
+print(churn_rate)
+
+
+#Creating a PieChart to Visualize the Churn rate
+plt.figure(figsize=(5,5))
+labels = ["Yes", "No"]
+values = [26.5, 73.5]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+
+#Correclation Matrix for all Numeric Columns
+sns.heatmap(churn_df.corr(), annot=True)
+plt.show()
+
+# #Converting objects to numerical
+# churn_df = pd.get_dummies(churn_df, columns = ['Phone','Multiple','InternetService', 'OnlineSecurity', 'OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies', 'Contract','PaperlessBilling','PaymentMethod','Churn'], drop_first = True)
+#
+# #Validating our changes
+# churn_df.info()
+
+#Monthly Charge Evaluation
+def monthly_charge(churn_df):
+    if churn_df['MonthlyCharge'] <= 100:
+        return "Charge below $100"
+    elif (churn_df['MonthlyCharge'] > 100) & (churn_df['MonthlyCharge'] <= 150):
+        return "Charge $100 - $150"
+    elif (churn_df['MonthlyCharge'] > 150) & (churn_df['MonthlyCharge'] <= 200):
+        return "Charge $150 - $200"
+    elif (churn_df['MonthlyCharge'] > 200):
+        return "Charge Above $200"
+
+df_clean_2 = churn_df.copy()
+df_clean_2['Monthly_Charge'] = df_clean_2.apply(lambda df_clean_2:monthly_charge(df_clean_2), axis=1)
+
+#Monthly Charge Analysis
+charge1_count = df_clean_2['Monthly_Charge'].value_counts()['Charge below $100']
+charge2_count = df_clean_2['Monthly_Charge'].value_counts()['Charge $100 - $150']
+charge3_count = df_clean_2['Monthly_Charge'].value_counts()['Charge $150 - $200']
+charge4_count = df_clean_2['Monthly_Charge'].value_counts()['Charge Above $200']
+
+charge_total = charge1_count + charge2_count + charge3_count + charge4_count
+
+pct_charge1 = (charge1_count / charge_total) * 100
+pct_charge2 = (charge2_count / charge_total) * 100
+pct_charge3 = (charge3_count / charge_total) * 100
+pct_charge4 = (charge4_count / charge_total) * 100
+
+#Pie Chart of Monthly Charge
+plt.figure(figsize=(5,5))
+labels = ["Charge below $100", "Charge $100 - $150", "Charge $150 - $200", "Charge Above $200"]
+values = [pct_charge1, pct_charge2, pct_charge3, pct_charge4]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+
+#Monthly Charge and Churn Rate
+no_churn = ((df_clean_2[df_clean_2['Churn'] =='No']['Monthly_Charge'].value_counts()) /(df_clean_2[df_clean_2['Churn']== 'No']['Monthly_Charge'].value_counts().sum()))
+yes_churn = ((df_clean_2[df_clean_2['Churn'] =='Yes']['Monthly_Charge'].value_counts()) /(df_clean_2[df_clean_2['Churn']=='Yes']['Monthly_Charge'].value_counts().sum()))
+
+# Getting values from the group and categories
+x_labels = df_clean_2['Churn'].value_counts().keys().tolist()
+level1 = [no_churn['Charge below $100'], yes_churn['Charge below $100']]
+level2 = [no_churn['Charge $100 - $150'], yes_churn['Charge $100 - $150']]
+level3 = [no_churn['Charge $150 - $200'], yes_churn['Charge $150 - $200']]
+level4 = [no_churn['Charge Above $200'], yes_churn['Charge Above $200']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7,7))
+ax1 = plt.bar(x_labels, level1, color='#00BFFF', label=('Charge below $100'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, level2, bottom=level1, color='lightgreen', label=('Charge $100 - $150'), edgecolor='white', width=barWidth)
+ax3 = plt.bar(x_labels, level3, bottom=np.array(level2) + np.array(level1), color='#FF9999', label=('Charge $150 - $200'), edgecolor='white', width=barWidth)
+ax4 = plt.bar(x_labels, level4, bottom=np.array(level1) + np.array(level2) + np.array(level3), color='#FFA07A', label=('Charge Above $200'), edgecolor='white', width=barWidth)
+
+plt.legend(loc='lower left', bbox_to_anchor=(1,0))
+plt.title('Churn Distribution by Monthly Charge')
+
+for r1, r2, r3, r4 in zip(ax1, ax2, ax3, ax4):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    h3 = r3.get_height()
+    h4 = r4.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r3.get_x() + r3.get_width() / 2., h1 + h2 + h3 / 2., '{:.2%}'.format(h3), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r4.get_x() + r4.get_width() / 2., h1 + h2 + h3 + h4 / 2., '{:.2%}'.format(h4), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+
+#Tenure Evaluation: I am going to create tenure intervals (0-12 months, 13-24 months, 25-48 months, 49-60 months,
+#greater than 60 months)
+def tenure_bands(churn_df):
+    if churn_df['Tenure'] <= 12:
+        return "Tenure_0-12"
+    elif (churn_df['Tenure'] > 12) & (churn_df['Tenure'] <= 24):
+        return "Tenure_13-24"
+    elif (churn_df['Tenure'] > 24) & (churn_df['Tenure'] <= 48):
+        return "Tenure_25-48"
+    elif (churn_df['Tenure'] > 48) & (churn_df['Tenure'] <= 60):
+        return "Tenure_49-60"
+    elif churn_df['Tenure'] > 60:
+        return "Tenure_gt_60"
+
+df_clean_3 = churn_df.copy()
+df_clean_3['tenure_group'] = df_clean_3.apply(lambda df_clean_3:tenure_bands(df_clean_3), axis=1)
+
+band1_count= df_clean_3['tenure_group'].value_counts()['Tenure_0-12']
+band2_count = df_clean_3['tenure_group'].value_counts()['Tenure_13-24']
+band3_count= df_clean_3['tenure_group'].value_counts()['Tenure_25-48']
+band4_count= df_clean_3['tenure_group'].value_counts()['Tenure_49-60']
+band5_count= df_clean_3['tenure_group'].value_counts()['Tenure_gt_60']
+
+band_total = band1_count + band2_count + band3_count + band4_count + band5_count
+
+pct_band1 = (band1_count / band_total) * 100
+pct_band2 = (band2_count / band_total) * 100
+pct_band3 = (band3_count / band_total) * 100
+pct_band4 = (band4_count / band_total) * 100
+pct_band5 = (band5_count / band_total) * 100
+
+#Pie Chart of Tenure Time
+plt.figure(figsize=(5,5))
+labels = ["0-12 Months", "13-24 Months", "25-48 Months", "48-60 Months", "Longer than 60 months"]
+values = [pct_band1, pct_band2, pct_band3, pct_band4, pct_band5]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+
+#Tenure and Churn Rate
+no_churn = ((df_clean_3[df_clean_3['Churn']=='No']['tenure_group'].value_counts()) /(df_clean_3[df_clean_3['Churn']=='No']['tenure_group'].value_counts().sum()))
+yes_churn = ((df_clean_3[df_clean_3['Churn']=='Yes']['tenure_group'].value_counts()) /(df_clean_3[df_clean_3['Churn']=='Yes']['tenure_group'].value_counts().sum()))
+
+# Getting values from the group and categories
+x_labels = churn_df['Churn'].value_counts().keys().tolist()
+t_0_12 = [no_churn['Tenure_0-12'], yes_churn['Tenure_0-12']]
+t_13_24 = [no_churn['Tenure_13-24'], yes_churn['Tenure_13-24']]
+t_25_48 = [no_churn['Tenure_25-48'], yes_churn['Tenure_25-48']]
+t_49_60 = [no_churn['Tenure_49-60'], yes_churn['Tenure_49-60']]
+t_gt_60 = [no_churn['Tenure_gt_60'], yes_churn['Tenure_gt_60']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7,7))
+ax1 = plt.bar(x_labels, t_0_12, color='#00BFFF', label=('Below 12M'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, t_13_24, bottom=t_0_12, color='lightgreen', label=('13 to 24'), edgecolor='white', width=barWidth)
+ax3 = plt.bar(x_labels, t_25_48, bottom=np.array(t_0_12) + np.array(t_13_24), color='#FF9999',  label=('25 to 48'), edgecolor='white', width=barWidth)
+ax4 = plt.bar(x_labels, t_49_60, bottom=np.array(t_0_12) + np.array(t_13_24) + np.array(t_25_48), color='#FFA07A', label=('48 to 60'), edgecolor='white', width=barWidth)
+ax5 = plt.bar(x_labels, t_gt_60, bottom=np.array(t_0_12) + np.array(t_13_24) + np.array(t_25_48) + np.array(t_49_60), color='#F0E68C', label=('> 60'), edgecolor='white', width=barWidth)
+
+plt.legend(loc='lower left', bbox_to_anchor=(1,0))
+plt.title('Churn Distribution by Tenure Group')
+
+for r1, r2, r3, r4, r5 in zip(ax1, ax2, ax3, ax4, ax5):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    h3 = r3.get_height()
+    h4 = r4.get_height()
+    h5 = r5.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r3.get_x() + r3.get_width() / 2., h1 + h2 + h3 / 2., '{:.2%}'.format(h3), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r4.get_x() + r4.get_width() / 2., h1 + h2 + h3 + h4 / 2., '{:.2%}'.format(h4), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r5.get_x() + r5.get_width() / 2., h1 + h2 + h3 + h4 + h5 / 2., '{:.2%}'.format(h5), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+#Bandwidth_GB_Year Analysis
+print(churn_df['Bandwidth_GB_Year'].unique())
+def bandwidth(churn_df):
+    if churn_df['Bandwidth_GB_Year'] <= 500:
+        return "Bandwidth Below 500"
+    elif (churn_df['Bandwidth_GB_Year'] > 500) & (churn_df['Bandwidth_GB_Year'] <= 1000):
+        return "Bandwidth 500 - 1000"
+    elif (churn_df['Bandwidth_GB_Year'] > 1000) & (churn_df['Bandwidth_GB_Year'] <= 2000):
+        return "Bandwidth 1000 - 2000"
+    elif (churn_df['Bandwidth_GB_Year'] > 2000):
+        return "Bandwidth Above 2000"
+
+df_clean_4 = churn_df.copy()
+df_clean_4['Bandwidth_GB_Year'] = df_clean_4.apply(lambda df_clean_4:bandwidth(df_clean_4), axis=1)
+
+bd1_count = df_clean_4['Bandwidth_GB_Year'].value_counts()['Bandwidth Below 500']
+bd2_count = df_clean_4['Bandwidth_GB_Year'].value_counts()['Bandwidth 500 - 1000']
+bd3_count = df_clean_4['Bandwidth_GB_Year'].value_counts()['Bandwidth 1000 - 2000']
+bd4_count = df_clean_4['Bandwidth_GB_Year'].value_counts()['Bandwidth Above 2000']
+
+bd_total = bd1_count + bd2_count + bd3_count + bd4_count
+
+pct_bd1 = (bd1_count / bd_total) * 100
+pct_bd2 = (bd2_count / bd_total) * 100
+pct_bd3 = (bd3_count / bd_total) * 100
+pct_bd4 = (bd4_count / bd_total) * 100
+
+#Pie Chart of Bandwidth
+
+plt.figure(figsize=(5,5))
+labels = ["Bandwidth below 500", "Bandwidth 500 to 1000", "Bandwidth 1000 to 2000", "Bandwidth Above 2000"]
+values = [pct_bd1, pct_bd2, pct_bd3, pct_bd4]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+
+#Bandwidth and churn
+no_churn = ((df_clean_4[df_clean_4['Churn']=='No']['Bandwidth_GB_Year'].value_counts()) /(df_clean_4[df_clean_4['Churn']=='No']['Bandwidth_GB_Year'].value_counts().sum()))
+yes_churn = ((df_clean_4[df_clean_4['Churn']=='Yes']['Bandwidth_GB_Year'].value_counts()) /(df_clean_4[df_clean_4['Churn']=='Yes']['Bandwidth_GB_Year'].value_counts().sum()))
+
+# Getting values from the group and categories
+x_labels = churn_df['Churn'].value_counts().keys().tolist()
+b_500 = [no_churn['Bandwidth Below 500'], yes_churn['Bandwidth Below 500']]
+b_500_1000 = [no_churn['Bandwidth 500 - 1000'], yes_churn['Bandwidth 500 - 1000']]
+b_1000_2000 = [no_churn['Bandwidth 1000 - 2000'], yes_churn['Bandwidth 1000 - 2000']]
+b_gt_2000 = [no_churn['Bandwidth Above 2000'], yes_churn['Bandwidth Above 2000']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7,7))
+ax1 = plt.bar(x_labels, b_500, color='#00BFFF', label=('Below 500 GB'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, b_500_1000, bottom=b_500, color='lightgreen', label=('Band 500-1000'), edgecolor='white', width=barWidth)
+ax3 = plt.bar(x_labels, b_1000_2000, bottom=np.array(b_500) + np.array(b_500_1000), color='#FF9999',  label=('Band 1000-2000'), edgecolor='white', width=barWidth)
+ax4 = plt.bar(x_labels, b_gt_2000, bottom=np.array(b_500) + np.array(b_500_1000) + np.array(b_1000_2000), color='#FFA07A', label=('Above 2000'), edgecolor='white', width=barWidth)
+
+plt.legend(loc='lower left', bbox_to_anchor=(1,0))
+plt.title('Churn Distribution by Bandwidth_GB_Year')
+
+for r1, r2, r3, r4 in zip(ax1, ax2, ax3, ax4):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    h3 = r3.get_height()
+    h4 = r4.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r3.get_x() + r3.get_width() / 2., h1 + h2 + h3 / 2., '{:.2%}'.format(h3), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r4.get_x() + r4.get_width() / 2., h1 + h2 + h3 + h4 / 2., '{:.2%}'.format(h4), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+#Type of contract: monthly, one year or two year contract
+print(churn_df['Contract'].unique())
+
+month_to_month_count= churn_df['Contract'].value_counts()['Month-to-month']
+one_year_count= churn_df['Contract'].value_counts()['One year']
+two_year_count = churn_df['Contract'].value_counts()['Two Year']
+
+contract_total = month_to_month_count + one_year_count + two_year_count
+
+contract1_pct = (month_to_month_count / contract_total) * 100
+contract2_pct = (one_year_count / contract_total) * 100
+contract3_pct = (two_year_count / contract_total) * 100
+
+#Pie Chart of Contract
+
+plt.figure(figsize=(5,5))
+labels = ["Month-to-month", "1 year Contract", "2 year Contract"]
+values = [contract1_pct, contract2_pct, contract3_pct]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+
+# #Contract Type and Churn Rate
+no_churn = ((churn_df[churn_df['Churn']=='No']['Contract'].value_counts()) /(churn_df[churn_df['Churn']=='No']['Contract'].value_counts().sum()))
+yes_churn = ((churn_df[churn_df['Churn']=='Yes']['Contract'].value_counts()) /(churn_df[churn_df['Churn']=='Yes']['Contract'].value_counts().sum()))
+
+# Getting values from the group and categories
+x_labels = churn_df['Churn'].value_counts().keys().tolist()
+monthly = [no_churn['Month-to-month'], yes_churn['Month-to-month']]
+one_year = [no_churn['One year'], yes_churn['One year']]
+two_year = [no_churn['Two Year'], yes_churn['Two Year']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7,7))
+ax1 = plt.bar(x_labels, monthly, color='#00BFFF', label=('Monthly'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, one_year, bottom=monthly, color='lightgreen', label=('One Year'), edgecolor='white', width=barWidth)
+ax3 = plt.bar(x_labels, two_year, bottom=np.array(one_year) + np.array(monthly), color='#FF9999', label=('Two Year'), edgecolor='white', width=barWidth)
+
+plt.legend(loc='lower left', bbox_to_anchor=(1,0))
+plt.title('Churn Distribution by Contract Type')
+
+for r1, r2, r3 in zip(ax1, ax2, ax3):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    h3 = r3.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r3.get_x() + r3.get_width() / 2., h1 + h2 + h3 / 2., '{:.2%}'.format(h3), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+#Streaming Movies
+sm_yes_count = churn_df['StreamingMovies'].value_counts()['Yes']
+sm_no_count = churn_df['StreamingMovies'].value_counts()['No']
+
+streamingm_total = sm_yes_count + sm_no_count
+
+sm_yes_pct = (sm_yes_count / streamingm_total) * 100
+sm_no_pct = (sm_no_count / streamingm_total) * 100
+
+#Pie Chart of type of Streaming Movies
+plt.figure(figsize=(5,5))
+labels = ["Yes for Streaming Movies", "No for Streaming Movies"]
+values = [sm_yes_pct, sm_no_pct]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+
+# # #StreamingMovies and Churn Rate
+no_churn = ((churn_df[churn_df['Churn']=='No']['StreamingMovies'].value_counts()) /(churn_df[churn_df['Churn']=='No']['StreamingMovies'].value_counts().sum()))
+yes_churn = ((churn_df[churn_df['Churn']=='Yes']['StreamingMovies'].value_counts()) /(churn_df[churn_df['Churn']=='Yes']['StreamingMovies'].value_counts().sum()))
+
+# Getting values from the group and categories
+x_labels = churn_df['Churn'].value_counts().keys().tolist()
+yes_sm = [no_churn['Yes'], yes_churn['Yes']]
+no_sm = [no_churn['No'], yes_churn['No']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7,7))
+ax1 = plt.bar(x_labels, yes_sm, color='#00BFFF', label=('Yes StreamingMovies'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, no_sm, bottom=yes_sm, color='lightgreen', label=('No StreamingMovies'), edgecolor='white', width=barWidth)
+
+plt.legend(loc='lower left', bbox_to_anchor=(1,0))
+plt.title('Churn Distribution by StreamingMovies')
+
+for r1, r2 in zip(ax1, ax2):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+#Streaming TV
+st_yes_count = churn_df['StreamingTV'].value_counts()['Yes']
+st_no_count = churn_df['StreamingTV'].value_counts()['No']
+
+streamingtv_total = st_yes_count + st_no_count
+
+st_yes_pct = (st_yes_count / streamingtv_total) * 100
+st_no_pct = (st_no_count / streamingtv_total) * 100
+
+#Pie Chart of type of Streaming TV
+
+plt.figure(figsize=(5,5))
+labels = ["Yes for Streaming TV", "No for Streaming TV"]
+values = [st_yes_pct, st_no_pct]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+#
+# #StreamingTV and Churn Rate
+no_churn = ((churn_df[churn_df['Churn']=='No']['StreamingTV'].value_counts()) /(churn_df[churn_df['Churn']=='No']['StreamingTV'].value_counts().sum()))
+yes_churn = ((churn_df[churn_df['Churn']=='Yes']['StreamingTV'].value_counts()) /(churn_df[churn_df['Churn']=='Yes']['StreamingTV'].value_counts().sum()))
+
+# Getting values from the group and categories
+x_labels = churn_df['Churn'].value_counts().keys().tolist()
+yes_st = [no_churn['Yes'], yes_churn['Yes']]
+no_st = [no_churn['No'], yes_churn['No']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7,7))
+ax1 = plt.bar(x_labels, yes_st, color='#00BFFF', label=('Yes StreamingTV'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, no_st, bottom=yes_st, color='lightgreen', label=('No StreamingTV'), edgecolor='white', width=barWidth)
+
+plt.legend(loc='lower left', bbox_to_anchor=(1,0))
+plt.title('Churn Distribution by StreamingTV')
+
+for r1, r2 in zip(ax1, ax2):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+#Type of Internet Service
+print(churn_df['InternetService'].unique())
+
+fiber_optic_count = churn_df['InternetService'].value_counts()['Fiber Optic']
+dsl_count = churn_df['InternetService'].value_counts()['DSL']
+none_count = churn_df['InternetService'].value_counts()['None']
+
+service_total = fiber_optic_count + dsl_count + none_count
+
+fiber_pct = (fiber_optic_count / service_total) * 100
+dsl_pct = (dsl_count / service_total) * 100
+none_pct = (none_count / service_total) * 100
+
+#Pie Chart of type of Internet Service
+
+plt.figure(figsize=(5,5))
+labels = ["Fiber Optic", "DSL", "None"]
+values = [fiber_pct, dsl_pct, none_pct]
+plt.pie(values, labels=labels, autopct="%.1f%%")
+plt.show()
+#Internet Service and Churn Rate
+no_churn = ((churn_df[churn_df['Churn']=='No']['InternetService'].value_counts()) /(churn_df[churn_df['Churn']=='No']['InternetService'].value_counts().sum()))
+yes_churn = ((churn_df[churn_df['Churn']=='Yes']['InternetService'].value_counts()) /(churn_df[churn_df['Churn']=='Yes']['InternetService'].value_counts().sum()))
+
+# Getting values from the group and categories
+x_labels = churn_df['Churn'].value_counts().keys().tolist()
+dsl = [no_churn['DSL'], yes_churn['DSL']]
+fiber_optic = [no_churn['Fiber Optic'], yes_churn['Fiber Optic']]
+none = [no_churn['None'], yes_churn['None']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7,7))
+ax1 = plt.bar(x_labels, dsl, color='#00BFFF', label=('DSL'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, fiber_optic, bottom=dsl, color='lightgreen', label=('Fiber Optic'), edgecolor='white', width=barWidth)
+ax3 = plt.bar(x_labels, none, bottom=np.array(fiber_optic) + np.array(dsl), color='#FF9999', label=('None'), edgecolor='white', width=barWidth)
+
+plt.legend(loc='lower left', bbox_to_anchor=(1,0))
+plt.title('Churn Distribution by Internet Service')
+
+for r1, r2, r3 in zip(ax1, ax2, ax3):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    h3 = r3.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r3.get_x() + r3.get_width() / 2., h1 + h2 + h3 / 2., '{:.2%}'.format(h3), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+
+
+
+#Multiple lines service
+no_churn = ((churn_df[churn_df['Churn'] == 'No']['Multiple'].value_counts()) / (churn_df[churn_df['Churn'] == 'No']['Multiple'].value_counts().sum()))
+yes_churn = ((churn_df[churn_df['Churn'] == 'Yes']['Multiple'].value_counts()) / (churn_df[churn_df['Churn'] == 'Yes']['Multiple'].value_counts().sum()))
+
+# Getting values from the group and categories
+#Churn is my X axis
+x_labels = churn_df['Churn'].value_counts().keys().tolist()
+#Y axis will be my other variables
+n_var = [no_churn['No'], yes_churn['No']]
+y_var = [no_churn['Yes'], yes_churn['Yes']]
+
+# Plotting bars
+barWidth = 0.8
+plt.figure(figsize=(7, 7))
+ax1 = plt.bar(x_labels, n_var, color='#00BFFF', label=('No Multiple'), edgecolor='white', width=barWidth)
+ax2 = plt.bar(x_labels, y_var, bottom=n_var, color='lightgreen', label=('Yes Multiple'), edgecolor='white', width=barWidth)
+plt.legend()
+plt.title('Churn Distribution by Multiple')
+
+for r1, r2 in zip(ax1, ax2):
+    h1 = r1.get_height()
+    h2 = r2.get_height()
+    plt.text(r1.get_x() + r1.get_width() / 2., h1 / 2., '{:.2%}'.format(h1), ha='center', va='center', color='black', fontweight='bold')
+    plt.text(r2.get_x() + r2.get_width() / 2., h1 + h2 / 2., '{:.2%}'.format(h2), ha='center', va='center', color='black', fontweight='bold')
+plt.show()
+
+
+#Histogram for Monthly Charge, Tenure and Bandwidth
+dataset = churn_df[['Tenure', 'MonthlyCharge', 'Bandwidth_GB_Year']]
+fig = plt.figure(figsize=(15, 12))
+plt.suptitle('Histograms of Numerical Columns\n', horizontalalignment="center", fontstyle="normal", fontsize=24, fontfamily="sans-serif")
+for i in range(dataset.shape[1]):
+    plt.subplot(6, 3, i + 1)
+    f = plt.gca()
+    f.set_title(dataset.columns.values[i])
+    vals = np.size(dataset.iloc[:, i].unique())
+    if vals >= 100:
+        vals = 100
+    plt.hist(dataset.iloc[:, i], bins=vals, color='#ec838a')
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.show()
+
+
+#Univariate Analysis
+#Histogram for Monthly Charge, Bandwidth, Churn and Contract
+dataset = churn_df[['MonthlyCharge', 'Bandwidth_GB_Year', 'Churn', 'Contract']]
+fig = plt.figure(figsize=(15, 12))
+plt.suptitle('Histograms Using Univariate Stats \n', horizontalalignment="center", fontstyle="normal", fontsize=24, fontfamily="sans-serif")
+for i in range(dataset.shape[1]):
+    plt.subplot(6, 3, i + 1)
+    f = plt.gca()
+    f.set_title(dataset.columns.values[i])
+    vals = np.size(dataset.iloc[:, i].unique())
+    if vals >= 100:
+        vals = 100
+    plt.hist(dataset.iloc[:, i], bins=vals, color='#ec838a')
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.show()
+
+# Create Seaborn boxplots for continuous variables
+sns.boxplot('MonthlyCharge', data = churn_df)
+plt.show()
+
+# Create Seaborn boxplots for continuous variables
+sns.boxplot('Bandwidth_GB_Year', data = churn_df)
+plt.show()
+
+# **********************************************************************************************************************
+#Creating a label encoder object
+le = LabelEncoder()
+churn_df['Churn'] = le.fit_transform(churn_df['Churn'])
+# Label Encoding will be used for columns with 2 or less unique values at this time
+le_count = 0
+for col in churn_df.columns[1:]:
+    if churn_df[col].dtype == 'object':
+        if len(list(churn_df[col].unique())) <= 2:
+            le.fit(churn_df[col])
+            churn_df[col] = le.transform(churn_df[col])
+            le_count += 1
+print('{} columns were label encoded.'.format(le_count))
+#**********************************************************************************************************************
+
+#Bivariate Analysis
+
+#Create dataframe for heatmap bivariate analysis of correlation
+churn_bivariate = churn_df[['MonthlyCharge', 'Bandwidth_GB_Year', 'Churn', 'Multiple']]
+sns.heatmap(churn_bivariate.corr(), annot=True)
+plt.show()
+
+
+#####################################################################################################
+# Two Numerical Variables PLot
+plt.scatter(churn_df['MonthlyCharge'], churn_df['Bandwidth_GB_Year'])
+plt.show()
+
+#Two Numerical against Churn
+sns.lmplot('MonthlyCharge', 'Bandwidth_GB_Year', data = churn_df, hue='Churn', fit_reg=False)
+plt.show()
+
+#Two Numerical against Contract
+sns.lmplot('MonthlyCharge', 'Bandwidth_GB_Year', data = churn_df, hue='Contract', fit_reg=False)
+plt.show()
+######################################################################################################
+
+
+contingency = pd.crosstab(churn_df['Churn'], churn_df['StreamingMovies'])
+print(contingency)
+
+plt.figure(figsize=(12, 8))
+sns.heatmap(contingency, annot=True, cmap="YlGnBu")
+plt.show()
+
+# Chi-square test for categorical variables
+c, p, dof, expected = chi2_contingency(contingency)
+print('p-value = ' + str(p))
